@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<!-- saved from url=(0014)about:internet -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <title></title>
+    <script src="./jquery-1.8.3.min.js(1).下载"></script>
+    <script src="./Compatible.min.js.下载"></script>
+    <script src="./fxcn.js.下载"></script>
+    
+</head>
+<body>
+    <script>
+        //判断是否为ie9
+        var IsIeNine = fx.IE_VERSION == 11 ? true : false;
+        var a = 1;
+        var BrokerObj = {
+            Init: function () {
+                this.setBrokerId = window.parent.spread_offer.parameter.setbrokerId;
+                this.pollurl = window.parent.spread_offer.parameter.pollurl;
+                this.FirstAjax();
+
+            },
+            FirstAjax: function () {
+                var self = this;
+                //if (!IsIeNine) {
+                    $.ajax({
+                        type: "POST",
+                        //url: "/Forex/Broker/PostTradeTimelyLast",
+                        url: self.pollurl + "/api/BrokerAccount/QueryTradeSimpleListByAccountId?accountIdStr="+ self.setBrokerId,
+                        success: function (res) {
+                            //console.log(res);
+                            if (res && typeof res === "object") {
+                                if (res.bodyMessage && res.bodyMessage != "") {
+                                    if (res.code == "0") {
+                                        firstAjax = true;
+                                        self.data = JSON.parse(res.bodyMessage);
+                                        // setTimeout(function () { BrokerObj.Init(); }, 8000);
+                                        timeChunks(JSON.parse(res.bodyMessage));
+
+                                    }
+                                }
+                            }
+                            BrokerObj.BrokerAjax();
+                        },
+                        error: function () {
+                            BrokerObj.BrokerAjax();
+                        }
+                    })
+                //} else {
+                //    $.ajax({
+                //        type: "post",
+                //        url: "/Forex/Broker/PostTradeTimelyLast",
+                //        data: { accountIdStr: self.setBrokerId },
+                //        success: function (res) {
+                //            //console.log(res);
+                //            if (res && typeof res === "object") {
+                //                if (res.bodyMessage && res.bodyMessage != "") {
+                //                    if (res.code == "0") {
+                //                        firstAjax = true;
+                //                        self.data = JSON.parse(res.bodyMessage);
+                //                        // setTimeout(function () { BrokerObj.Init(); }, 8000);
+                //                        timeChunks(JSON.parse(res.bodyMessage));
+
+                //                    }
+                //                }
+                //            }
+                //            BrokerObj.BrokerAjax();
+                //        },
+                //        error: function () {
+                //            BrokerObj.BrokerAjax();
+                //        }
+                //    })
+                //}
+
+            },
+            BrokerAjax: function () {
+                var self = this;
+                if (!IsIeNine) {
+                    $.ajax({
+                        type: "post",
+                        url: self.pollurl + "/api/BrokerAccount/QueryTradeSimpleListByAccountId?accountIdStr=" + self.setBrokerId,
+                        success: function (res) {
+                            if (res && typeof res === "object") {
+                                if (res.bodyMessage && res.bodyMessage != "") {
+                                    if (res.code == "0") {
+                                        self.data = JSON.parse(res.bodyMessage);
+                                        setTimeout(function () { BrokerObj.BrokerAjax(); }, 8000);
+                                        timeChunks(JSON.parse(res.bodyMessage));
+
+                                    }
+                                }
+                            }
+                        }
+                    })
+                } else {
+                    $.ajax({
+                        type: "post",
+                        url: "/Forex/Broker/PostTradeTimely",
+                        //url:"http://gadynamicspread.fx110.uk/api/queryTradeByAccountId",
+                        data: { accountIdStr: self.setBrokerId },
+                        success: function (res) {
+                            if (res && typeof res === "object") {
+                                if (res.bodyMessage && res.bodyMessage != "") {
+                                    if (res.code == "0") {
+                                        self.data = JSON.parse(res.bodyMessage);
+                                        setTimeout(function () { BrokerObj.BrokerAjax(); }, 8000);
+                                        timeChunks(JSON.parse(res.bodyMessage));
+
+                                    }
+                                }
+                            }
+                        }
+                    })
+                }
+
+            },
+            BrokerCycle: function (obj, id) {
+                var data = obj, htmls = '';
+                if (obj.length > 0) {
+                    BrokerAddHtml(obj, id);
+                } else {
+                    return;
+                }
+
+
+                var self = this;
+                function BrokerAddHtml(data, id) {
+                    var Dom = window.parent.spread_offer.parameter.BrokerDom;
+                    for (var i = 0; i < Dom.length; i++) {
+                        var brokerId = $(Dom[i]).attr('data-id').split('_')[1];
+                        if (id == brokerId) {
+                            for (var j = 0; j < data.length; j++) {
+                                var li = $('#BNM_' + id, parent.document).children();
+                                li.each(function () {
+                                    if (parseInt($(this).attr('class')) == data[j].UnifiedId) {
+                                            var num = $(this).find('span').text() == "--" ? 0 : $(this).find('span').text();
+                                            if (num > data[j].S && num != 0) {
+                                                $(this).find('span').removeClass('green');
+                                                $(this).find('span').addClass('red');
+                                            } else if (num < data[j].S && num != 0) {
+                                                $(this).find('span').removeClass('red');
+                                                $(this).find('span').addClass('green');
+                                            } else { }
+                                        $(this).find('span').text((data[j].S).toFixed(1)).attr("title", (data[j].S).toFixed(1));
+                                    }
+                                })
+                            }
+                        }
+                    }
+                }
+                // spreadTime = setTimeout(self.action, 10000)
+
+            },
+            action: function () {
+                BrokerObj.Init();
+            }
+        }
+
+
+        /** 分时赋值
+         * @param timer  渲染的间隔时间
+         * @param count  每次渲染的数量
+         */
+
+        var timeChunk = function (timer, count, fn) {
+            // cache = [[值,id],[值,id]]
+            var cache = [],
+                timer = timer || 1000,
+                count = count || 100,
+                fn = fn || function () { },
+                t = null,
+                isfirst = true;
+            var objConcat = function (obj) {
+                for (var i in obj) {
+                    if (obj[i].length === 0) continue;
+                    var isexistence = false;
+                    for (var j = 0; j < cache.length; j++) {
+                        if (cache[j][1] === i) {
+                            cache[j] = [obj[i], i];
+                            isexistence = true;
+                            break;
+                        }
+
+                    }
+                    if (!isexistence) cache.push([obj[i], i]);
+                }
+            }
+
+            var start = function () {
+                var length = Math.min(count, cache.length);
+                for (var i = 0; i < length; i++) {
+                    var objAry = Array.prototype.shift.call(cache);
+                    fn.call(BrokerObj, objAry[0], objAry[1]);
+                }
+
+            }
+
+            return function (obj) {
+                if (obj) { objConcat(obj); }
+                clearTimeout(t);
+
+                //没有数据就不执行
+                if (cache.length <= 0) {
+                    isfirst = true;
+                    return false;
+                }
+
+                //是否是首次加载
+                if (isfirst) {
+                    start();
+                    isfirst = false;
+                    timeChunks();
+                    return
+                }
+                start();
+                t = setTimeout(function () {
+                    timeChunks();
+                }, timer);
+
+
+            }
+
+
+        }
+
+        var timeChunks = new timeChunk(200, 5, BrokerObj.BrokerCycle);
+
+        BrokerObj.Init();
+    </script>
+
+
+<div id="contextmeun_parent" style="position: absolute;"></div></body></html>
